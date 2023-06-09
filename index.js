@@ -184,11 +184,18 @@ async function run() {
       })
 
 
-     // classes related apis
-     app.get('/classes', async(req, res) => {
-        const result = await allClasses.find().toArray();
-        res.send(result);
-    })
+    //  classes related apis
+    app.get('/classes', async (req, res) => {
+      let query = {};
+      if(req.query?.email){
+        query = {email: req.query.email}
+      }
+
+      const result = await allClasses.find(query).toArray();
+      res.send(result);
+    });
+    
+
 
     app.post('/classes', verifyJWT, verifyInstructor, async (req, res) => {
       const newItem = req.body;
