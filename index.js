@@ -19,13 +19,17 @@ const verifyJWT = (req, res, next) => {
   if (!authorization) {
     return res.status(401).send({ error: true, message: 'unauthorized access' });
   }
+  console.log(authorization)
   // bearer token
   const token = authorization.split(' ')[1];
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
+      console.log(err)
       return res.status(401).send({ error: true, message: 'unauthorized access' })
+      
     }
+    
     req.decoded = decoded;
     next();
   })
@@ -62,7 +66,7 @@ async function run() {
            app.post('/jwt', (req, res)=> {
             const user = req.body;
             console.log(user)
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'});
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '24h'});
             res.send({token})
           })
 
@@ -89,7 +93,7 @@ async function run() {
 
        // users related apis
 
-       app.get('/users',verifyJWT, verifyAdmin, async(req, res) => {
+       app.get('/users', async(req, res) => {
         const result = await usersCollection.find().toArray();
         res.send(result);
       })
@@ -163,6 +167,20 @@ async function run() {
 
 
 
+      app.patch('/classes/approve/:id', verifyJWT, verifyAdmin, async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            approved: true
+          },
+        };
+      
+        const result = await allClasses.updateOne(filter, updateDoc);
+        res.send(result);
+      });
+      
+
 
 
 
@@ -202,6 +220,11 @@ async function run() {
       const result = await allClasses.insertOne(newItem)
       res.send(result);
     })
+    app.post('/classes/pending', verifyJWT, verifyInstructor, async (req, res) => {
+      const newItem = req.body;
+      const result = await allClasses.insertOne(newItem)
+      res.send(result);
+    })
 
     app.delete('/classes/:id', verifyJWT, verifyInstructor, async (req, res) => {
       const id = req.params.id;
@@ -210,6 +233,104 @@ async function run() {
       res.send(result);
     })
 
+
+
+    app.patch('/classes/:id', async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: 'approved'
+        },
+      };
+
+      const result = await allClasses.updateOne(filter, updateDoc);
+      res.send(result);
+
+    })
+
+
+    // --------------------
+
+
+    app.get('/classes/pending',  async (req, res) => {
+      try {
+        const pendingClasses = await allClasses.find().toArray();
+        res.send(pendingClasses);
+      } catch (error) {
+        res.status(500).send({ error: true, message: 'Failed to fetch pending classes' });
+      }
+    });
+
+
+
+//     // Endpoint for approving a class
+// app.post("/classes/:classId/approve", (req, res) => {
+//   const classId = req.params.classId;
+  
+//   // Logic to approve the class in the database
+//   // ...
+
+//   // Send a response indicating successful approval
+//   res.json({ message: "Class approved successfully" });
+// });
+
+// app.get('/classes/:classId/approve', async(req, res) => {
+//   const result = await allClasses.find().toArray();
+//   res.send(result);
+// })
+
+// // Endpoint for rejecting a class
+// app.post("/classes/:classId/reject", (req, res) => {
+//   const classId = req.params.classId;
+  
+//   // Logic to reject the class in the database
+//   // ...
+
+//   // Send a response indicating successful rejection
+//   res.json({ message: "Class rejected successfully" });
+// });
+
+
+
+    app.post('/classes/:id/approve', verifyJWT, verifyAdmin, async (req, res) => {
+      const classId = req.params.id;
+    
+      try {
+        const filter = { _id: new ObjectId(classId) };
+        const update = { $set: { status: 'approved' } };
+        const result = await allClasses.updateOne(filter, update);
+    
+        if (result.modifiedCount === 0) {
+          return res.status(404).send({ error: true, message: 'Class not found' });
+        }
+    
+        res.send({ message: 'Class approved successfully' });
+      } catch (error) {
+        res.status(500).send({ error: true, message: 'Failed to approve class' });
+      }
+    });
+
+    
+    app.post('/classes/:id/reject', verifyJWT, verifyAdmin, async (req, res) => {
+      const classId = req.params.id;
+    
+      try {
+        const filter = { _id: new ObjectId(classId) };
+        const update = { $set: { status: 'rejected' } };
+        const result = await allClasses.updateOne(filter, update);
+    
+        if (result.modifiedCount === 0) {
+          return res.status(404).send({ error: true, message: 'Class not found' });
+        }
+    
+        res.send({ message: 'Class rejected successfully' });
+      } catch (error) {
+        res.status(500).send({ error: true, message: 'Failed to reject class' });
+      }
+    });
+    
 
 
 
