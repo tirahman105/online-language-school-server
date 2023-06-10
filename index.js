@@ -152,7 +152,7 @@ async function run() {
       
 
 
-
+// make admin api 
 
       app.patch('/users/admin/:id', async (req, res) => {
         const id = req.params.id;
@@ -187,7 +187,7 @@ async function run() {
 
 
 
-
+// make instructor api
 
 
       app.patch('/users/instructor/:id', async (req, res) => {
@@ -241,6 +241,7 @@ async function run() {
 
     app.patch('/classes/:id', async (req, res) => {
       const status= req.body.status;
+      const feedback= req.body.feedback;
       
   console.log(status)
       const id = req.params.id;
@@ -248,7 +249,8 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
-          status: status
+          status: status,
+          feedback: feedback,
         },
       };
 
@@ -336,6 +338,23 @@ async function run() {
 
          
       app.get('/booked', verifyJWT, async (req, res) => {
+        const email = req.query.email;
+ 
+        if (!email) {
+          res.send([]);
+        }
+
+        const decodedEmail = req.decoded.email;
+        if (email !== decodedEmail) {
+          return res.status(403).send({ error: true, message: 'forbidden access' })
+        }
+        const query = { user_email: email };
+        const result = await bookedClasses.find(query).toArray();
+        res.send(result);
+      });
+        
+      
+      app.get('/booked/instructor', verifyJWT, async (req, res) => {
         const email = req.query.email;
  
         if (!email) {
