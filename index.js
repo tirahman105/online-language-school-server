@@ -132,6 +132,10 @@ async function run() {
 
 
 
+    
+
+
+
           // check instructor
           app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
@@ -236,12 +240,15 @@ async function run() {
 
 
     app.patch('/classes/:id', async (req, res) => {
+      const status= req.body.status;
+      
+  console.log(status)
       const id = req.params.id;
       console.log(id);
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
-          status: 'approved'
+          status: status
         },
       };
 
@@ -249,6 +256,25 @@ async function run() {
       res.send(result);
 
     })
+
+
+    // app.put('/classes/:id', async(req, res) => {
+    //   const id = req.params.id;
+    //     const body = req.body;
+    //     console.log(id, body);
+       
+    //     const filter = {_id: new ObjectId(id)}
+    //     const updateDoc = {
+    //           $set: {
+    //             Feedback: body.feedback,
+               
+    //           },
+    //         };
+    //         const result = await allClasses.updateOne(filter, updateDoc);
+    //         res.send(result);
+  
+  
+    // })
 
 
     // --------------------
@@ -263,34 +289,6 @@ async function run() {
       }
     });
 
-
-
-//     // Endpoint for approving a class
-// app.post("/classes/:classId/approve", (req, res) => {
-//   const classId = req.params.classId;
-  
-//   // Logic to approve the class in the database
-//   // ...
-
-//   // Send a response indicating successful approval
-//   res.json({ message: "Class approved successfully" });
-// });
-
-// app.get('/classes/:classId/approve', async(req, res) => {
-//   const result = await allClasses.find().toArray();
-//   res.send(result);
-// })
-
-// // Endpoint for rejecting a class
-// app.post("/classes/:classId/reject", (req, res) => {
-//   const classId = req.params.classId;
-  
-//   // Logic to reject the class in the database
-//   // ...
-
-//   // Send a response indicating successful rejection
-//   res.json({ message: "Class rejected successfully" });
-// });
 
 
 
