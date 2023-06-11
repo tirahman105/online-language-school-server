@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 require('dotenv').config()
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000
 
 
@@ -58,6 +59,7 @@ async function run() {
     const usersCollection = client.db("schoolDB").collection("users");
     const allClasses = client.db("schoolDB").collection("classes");
     const bookedClasses = client.db("schoolDB").collection("booked");
+    const paymentCollection = client.db("schoolDB").collection("payments");
 
 
 
@@ -260,23 +262,21 @@ async function run() {
     })
 
 
-    // app.put('/classes/:id', async(req, res) => {
-    //   const id = req.params.id;
-    //     const body = req.body;
-    //     console.log(id, body);
+    app.put('/classes/:id', async(req, res) => {
+      const id = req.params.id;
+        const body = req.body;
+        console.log(id, body);
        
-    //     const filter = {_id: new ObjectId(id)}
-    //     const updateDoc = {
-    //           $set: {
-    //             Feedback: body.feedback,
-               
-    //           },
-    //         };
-    //         const result = await allClasses.updateOne(filter, updateDoc);
-    //         res.send(result);
+        const filter = {_id: new ObjectId(id)}
+        const options = {upsert: true}
+        const updateDoc = {
+              $set:body
+            };
+            const result = await allClasses.updateOne(filter, updateDoc, options);
+            res.send(result);
   
   
-    // })
+    })
 
 
     // --------------------
@@ -384,6 +384,79 @@ async function run() {
         const result = await bookedClasses.deleteOne(query);
         res.send(result);
       })
+
+
+       // create payment intent
+    app.post('/create-payment-intent',  async (req, res) => {
+      const { price } = req.body;
+      const amount = parseFloat(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+
+    // payment related api
+app.post('/payments', verifyJWT, async (req, res) => {
+  const paymentInfo = req.body;
+  const insertResult = await paymentCollection.insertOne(paymentInfo);
+
+  const query = { _id: new ObjectId(paymentInfo._id) };
+  const deleteResult = await bookedClasses.deleteOne(query);
+
+  res.send({ insertResult, deleteResult });
+});
+
+app.get('/payments', async (req, res) => {
+  let query = {};
+  if(req.query?.email){
+    query = {email: req.query.email}
+  }
+
+  const result = await paymentCollection.find(query).toArray();
+  res.send(result);
+});
+
+
+app.get('/payments', verifyJWT, async (req, res) => {
+  const email = req.query.email;
+
+  if (!email) {
+    res.send([]);
+  }
+
+  const decodedEmail = req.decoded.email;
+  if (email !== decodedEmail) {
+    return res.status(403).send({ error: true, message: 'forbidden access' })
+  }
+  const query = { user_email: email };
+  const result = await paymentCollection.find(query).toArray();
+  res.send(result);
+});
+
+
+app.get('/paymentsPopular', async (req, res) => {
+  let query = {};
+  if (req.query?.email) {
+    query = { email: req.query.email };
+  }
+
+  const result = await paymentCollection.aggregate([
+    { $match: query },
+    { $group: { _id: '$bookedClassId', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 6 }
+  ]).toArray();
+
+  res.send(result);
+});
+
 
 
 
