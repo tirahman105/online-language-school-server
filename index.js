@@ -445,38 +445,75 @@ app.get('/payments', async (req, res) => {
 // });
 
 
+// app.get('/topInstructors', async (req, res) => {
+//   const result = await paymentCollection.aggregate([
+//     {
+//       $group: {
+//         _id: "$instructor_email",
+//         totalPayments: { $sum: 1 }
+//       }
+//     },
+//     {
+//       $sort: { totalPayments: -1 }
+//     },
+//     {
+//       $limit: 3
+//     }
+//   ]).toArray();
+
+//   const instructorEmails = result.map(instructor => instructor._id);
+  
+//   const instructors = await usersCollection.find({ email: { $in: instructorEmails } }).toArray();
+  
+//   const enrichedResult = result.map(instructor => {
+//     const matchedInstructor = instructors.find(i => i.email === instructor._id);
+//     return {
+//       email: instructor._id,
+//       totalPayments: instructor.totalPayments,
+//       image: matchedInstructor?.photo
+//     };
+//   });
+  
+//   res.send(enrichedResult);
+// });
+
 app.get('/topInstructors', async (req, res) => {
-  const result = await paymentCollection.aggregate([
-    {
-      $group: {
-        _id: "$instructor_email",
-        totalPayments: { $sum: 1 }
+  try {
+    const result = await paymentCollection.aggregate([
+      {
+        $group: {
+          _id: "$instructor_email",
+          totalPayments: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { totalPayments: -1 }
+      },
+      {
+        $limit: 3
       }
-    },
-    {
-      $sort: { totalPayments: -1 }
-    },
-    {
-      $limit: 3
-    }
-  ]).toArray();
+    ]).toArray();
 
-  const instructorEmails = result.map(instructor => instructor._id);
-  
-  const instructors = await usersCollection.find({ email: { $in: instructorEmails } }).toArray();
-  
-  const enrichedResult = result.map(instructor => {
-    const matchedInstructor = instructors.find(i => i.email === instructor._id);
-    return {
-      email: instructor._id,
-      totalPayments: instructor.totalPayments,
-      image: matchedInstructor?.photo
-    };
-  });
-  
-  res.send(enrichedResult);
+    const instructorEmails = result.map(instructor => instructor._id);
+
+    const instructors = await usersCollection.find({ email: { $in: instructorEmails } }).toArray();
+
+    const enrichedResult = result.map(instructor => {
+      const matchedInstructor = instructors.find(i => i.email === instructor._id);
+      return {
+        email: instructor._id,
+        name: matchedInstructor?.name,
+        totalPayments: instructor.totalPayments,
+        image: matchedInstructor?.photo
+      };
+    });
+
+    res.send(enrichedResult);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal Server Error");
+  }
 });
-
 
 
 
@@ -500,6 +537,23 @@ app.get('/payments/', verifyJWT, async (req, res) => {
 });
 
 
+// app.get('/paymentsPopular', async (req, res) => {
+//   let query = {};
+//   if (req.query?.email) {
+//     query = { email: req.query.email };
+//   }
+
+//   const result = await paymentCollection.aggregate([
+//     { $match: query },
+//     { $group: { _id: '$bookedClassId', count: { $sum: 1 } } },
+//     { $sort: { count: -1 } },
+//     { $limit: 6 }
+//   ]).toArray();
+
+//   res.send(result);
+// });
+
+
 app.get('/paymentsPopular', async (req, res) => {
   let query = {};
   if (req.query?.email) {
@@ -513,8 +567,28 @@ app.get('/paymentsPopular', async (req, res) => {
     { $limit: 6 }
   ]).toArray();
 
-  res.send(result);
+  // Extract the bookedClassIds from the result
+  const bookedClassIds = result.map(item => item._id);
+
+  // Query the 'bookedClasses' collection for additional information
+  const bookedClasses = await bookedClassesCollection.find({ _id: { $in: bookedClassIds } }).toArray();
+
+  // Combine the payment and bookedClass information
+  const combinedResult = result.map(item => {
+    const bookedClass = bookedClasses.find(classItem => classItem._id === item._id);
+    return {
+      _id: item._id,
+      count: item.count,
+      name: bookedClass.name,
+      category: bookedClass.category,
+      instructor: bookedClass.instructor
+    };
+  });
+
+  res.send(combinedResult);
 });
+
+
 
 
 
