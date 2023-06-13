@@ -420,7 +420,7 @@ app.get('/payments', async (req, res) => {
   }
   
 
-  const result = await paymentCollection.find(query).toArray();
+  const result = await paymentCollection.find(query).sort({ createdAt: -1 }).toArray();
   res.send(result);
 });
 
