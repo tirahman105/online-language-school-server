@@ -442,7 +442,7 @@ app.get('/topInstructors', async (req, res) => {
         $sort: { totalPayments: -1 }
       },
       {
-        $limit: 3
+        $limit: 6
       }
     ]).toArray();
 
