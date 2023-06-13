@@ -405,6 +405,7 @@ async function run() {
     // payment related api
 app.post('/payments', verifyJWT, async (req, res) => {
   const paymentInfo = req.body;
+  paymentInfo.createdAt = new Date();
   const insertResult = await paymentCollection.insertOne(paymentInfo);
 
   const query = { _id: new ObjectId(paymentInfo._id) };
@@ -412,6 +413,8 @@ app.post('/payments', verifyJWT, async (req, res) => {
 
   res.send({ insertResult, deleteResult });
 });
+
+
 
 app.get('/payments', async (req, res) => {
   let query = {};
